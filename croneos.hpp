@@ -13,7 +13,7 @@ namespace croneos{
     using namespace eosio;
 
     //todo fetch stuff from the cron_contract
-    
+
     name const cron_contract_name = name("piecestest12");
     permission_level const required_exec_permission_level = permission_level{"execexecexec"_n, "active"_n};
 
@@ -34,14 +34,14 @@ namespace croneos{
         uint32_t expiration_sec = 0;
         asset gas_fee = asset(0, symbol(symbol_code("EOS"), 4));//optional: the gas fee you are willing to pay
         string description ="This is the default description";//optional:describe the cronjob, visible in UI
-        vector<permission_level> exec_permission_level = { required_exec_permission_level };
+        vector<permission_level> custom_exec_permissions;
         bool auto_pay_gas = false;
 
         template<typename... T>
         void schedule(name code, name actionname, tuple<T...> data, permission_level auth) {
             
             vector<action> cron_actions;
-            action cron_action = action(exec_permission_level, code, actionname, move(data) );
+            action cron_action = action(construct_permission_levels(), code, actionname, move(data) );
             cron_actions.push_back(cron_action);
 
             //pay gas
@@ -55,6 +55,13 @@ namespace croneos{
                 make_tuple(owner, tag, cron_actions, due_date, delay_sec, expiration, expiration_sec, gas_fee, description)
             ).send();
             
+        }
+        private:
+        vector<permission_level> construct_permission_levels(){
+            vector<permission_level> res;
+            res.push_back(required_exec_permission_level);
+            res.insert(res.end(), custom_exec_permissions.begin(), custom_exec_permissions.end());
+            return res;
         }
 
     };
