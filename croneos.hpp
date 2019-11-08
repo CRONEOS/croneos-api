@@ -58,10 +58,8 @@ namespace croneos{
         }
         private:
         vector<permission_level> construct_permission_levels(){
-            vector<permission_level> res;
-            res.push_back(required_exec_permission_level);
-            res.insert(res.end(), custom_exec_permissions.begin(), custom_exec_permissions.end());
-            return res;
+            custom_exec_permissions.push_back(required_exec_permission_level);
+            return custom_exec_permissions;
         }
 
     };
