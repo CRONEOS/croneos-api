@@ -20,12 +20,12 @@ namespace croneos{
         uint32_t delay_sec = 0;
         time_point_sec expiration = time_point_sec(0);
         uint32_t expiration_sec = 0;
-        asset gass_fee = asset(0, symbol(symbol_code("EOS"), 4));//optional: the gass fee you are willing to pay
+        asset gas_fee = asset(0, symbol(symbol_code("EOS"), 4));//optional: the gas fee you are willing to pay
         string description ="This is the default description";//optional:describe the cronjob, visible in UI
 
         vector<permission_level> exec_permission_level = {permission_level{"execexecexec"_n, "active"_n} };//permission level used for executing the cronjob
 
-        bool auto_pay_gass = false;
+        bool auto_pay_gas = false;
         
 
         template<typename... T>
@@ -35,27 +35,27 @@ namespace croneos{
             action cron_action = action(exec_permission_level, code, actionname, move(data) );
             cron_actions.push_back(cron_action);
 
-            //pay gass
-            if(auto_pay_gass){
-                pay_gass(gass_fee, auth);
+            //pay gas
+            if(auto_pay_gas){
+                pay_gas(gas_fee, auth);
             }
             //schedule
             action(
                 auth,
                 "piecestest12"_n, "schedule"_n,
-                 make_tuple(owner, tag, cron_actions, due_date, delay_sec, expiration, expiration_sec, gass_fee, description)
+                 make_tuple(owner, tag, cron_actions, due_date, delay_sec, expiration, expiration_sec, gas_fee, description)
             ).send();
 
             
         }
 
-        void pay_gass(asset gass, permission_level auth){
+        void pay_gas(asset gas, permission_level auth){
 
-            if(gass.amount > 0){
+            if(gas.amount > 0){
                 action(
                     auth,
                     "eosio.token"_n, "transfer"_n,
-                    make_tuple(owner, "piecestest12"_n, gass, string("pay gass"))
+                    make_tuple(owner, "piecestest12"_n, gas, string("pay gas"))
                 ).send();
             }
         
