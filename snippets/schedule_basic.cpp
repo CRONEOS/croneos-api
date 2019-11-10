@@ -6,9 +6,6 @@ ACTION yourcontract::schedule(uint32_t delay_sec, uint32_t expiration_sec, name 
     //...
     //...
 
-    //croneos utils
-    checksum256 trx_id = croneos::utils::get_trx_id(); //get trx_id of the current transaction. useful if you want to keep records of the cronjob executions.
-
     //configure and schedule cronjob
     croneos::job mycronjob;
     mycronjob.owner = get_self();
@@ -43,5 +40,9 @@ ACTION yourcontract::schedule(uint32_t delay_sec, uint32_t expiration_sec, name 
       make_tuple(delay_sec, expiration_sec,  tag ), //the action data
       permission_level{get_self(), "active"_n} //authorization for scheduling NOT for execution of the scheduled job
     );
+
+    //croneos utils (optional)
+    //get trx_id of the current transaction. useful if you want to keep records of the cronjob executions.
+    //checksum256 trx_id = croneos::utils::get_trx_id(); 
 
 }
