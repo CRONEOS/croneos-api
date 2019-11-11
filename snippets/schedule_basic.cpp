@@ -15,7 +15,7 @@ ACTION yourcontract::schedule(uint32_t delay_sec, uint32_t expiration_sec, name 
 
     //set execution and expiration with delays
     mycronjob.delay_sec = delay_sec; // uint32_t
-    mycronjob.expiration_sec = expiration_sec; // uint32_t will
+    mycronjob.expiration_sec = expiration_sec; // uint32_t
 
     //OR use fixed time points (don't set delay_sec and/or expiration_sec when using)
     //mycronjob.due_date = time_point_sec(current_time_point().sec_since_epoch() + 60*60*24*3); //executable after 3 days;
