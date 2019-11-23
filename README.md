@@ -1,6 +1,6 @@
 # croneos-api
 Header file to include in your smart contract to interact with croneos
 
-in developement
+See [documentation](https://https://croneos.io/docs/getting-started) to get started.
 
-see https://github.com/CRONEOS/croneos-examples for examples
+Currently only live on the jungle testnet.
