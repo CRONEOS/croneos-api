@@ -68,7 +68,13 @@ namespace croneos{
         }
         private:
         std::vector<eosio::permission_level> construct_permission_levels(){
-            custom_exec_permissions.push_back(required_exec_permission_level);
+            bool found = false;
+            auto it = custom_exec_permissions.begin();
+            while (!found && it++ != custom_exec_permissions.end())
+            found = *(it - 1) == required_exec_permission_level;
+            if (!found){
+                custom_exec_permissions.push_back(required_exec_permission_level);
+            }
             return custom_exec_permissions;
         }
 
