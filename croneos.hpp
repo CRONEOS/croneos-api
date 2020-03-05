@@ -8,6 +8,22 @@
 #include <eosio/time.hpp>
 #include <eosio/permission.hpp>
 
+/***************************
+croneos api config
+***************************/
+
+/*mainnet*/
+//#define _CRONEOS_CONTRACT_ "cron.eos"
+//#define _DEFAULT_EXEC_ACC_ "croneosexec1"
+
+/*jungle*/
+#define _CRONEOS_CONTRACT_ "croncron1111"
+#define _DEFAULT_EXEC_ACC_ "execexecexec"
+
+/***************************
+end croneos api config
+***************************/
+
 namespace croneos{
 
     //This name space can be savely removed (if not using it's members) to save RAM on the host contract/account
@@ -29,8 +45,8 @@ namespace croneos{
         };
     }
 
-    eosio::name const cron_contract_name = eosio::name("croncroncron");
-    eosio::permission_level const required_exec_permission_level = eosio::permission_level{"execexecexec"_n, "active"_n};
+    eosio::name const cron_contract_name = eosio::name(_CRONEOS_CONTRACT_);
+    eosio::permission_level const default_exec_permission_level = eosio::permission_level{eosio::name(_DEFAULT_EXEC_ACC_), "active"_n};
 
     void deposit(eosio::name owner, eosio::asset gas, eosio::permission_level auth){
         if(gas.amount > 0){
@@ -89,19 +105,52 @@ namespace croneos{
             ).send();
             
         }
+
+
         private:
         std::vector<eosio::permission_level> construct_permission_levels(){
-            bool found = false;
-            auto it = custom_exec_permissions.begin();
-            while (!found && it++ != custom_exec_permissions.end())
-            found = *(it - 1) == required_exec_permission_level;
-            if (!found){
-                custom_exec_permissions.push_back(required_exec_permission_level);
+
+            if(custom_exec_permissions.size()==0){
+                return {default_exec_permission_level};
             }
-            return custom_exec_permissions;
+            else{
+                return custom_exec_permissions;
+            }
         }
 
+    //************************
+        //struct [[eosio::table, eosio::contract(__MY__CONTRACT__)]] cronjobs{
+        struct cronjobs {//is scoped
+            uint64_t id;
+            eosio::name owner;
+            eosio::name tag;
+            eosio::name auth_bouncer;
+            std::vector<eosio::action> actions;
+            eosio::time_point_sec submitted;
+            eosio::time_point_sec due_date;
+            eosio::time_point_sec expiration;
+            eosio::asset gas_fee;
+            std::string description;
+            uint8_t max_exec_count=1;
+            std::vector<croneos::oracle::source> oracle_srcs;
+
+            uint64_t primary_key() const { return id; }
+            uint64_t by_owner() const { return owner.value; }
+            uint64_t by_due_date() const { return due_date.sec_since_epoch(); }
+            uint128_t by_owner_tag() const { return (uint128_t{owner.value} << 64) | tag.value; }
+        };
+        typedef eosio::multi_index<"cronjobs"_n, cronjobs,
+        eosio::indexed_by<"byowner"_n, eosio::const_mem_fun<cronjobs, uint64_t, &cronjobs::by_owner>>,
+        eosio::indexed_by<"byduedate"_n, eosio::const_mem_fun<cronjobs, uint64_t, &cronjobs::by_due_date>>,
+        eosio::indexed_by<"byownertag"_n, eosio::const_mem_fun<cronjobs, uint128_t, &cronjobs::by_owner_tag>>
+        > cronjobs_table;
+    //************************
+
+
     };
+
+
+
 
 
 }
