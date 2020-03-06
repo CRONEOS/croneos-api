@@ -45,12 +45,45 @@ namespace croneos{
         };
     }
 
-    eosio::name const cron_contract_name = eosio::name(_CRONEOS_CONTRACT_);
+    //************************
+    //struct [[eosio::table, eosio::contract(__MY__CONTRACT__)]] cronjobs{
+    struct cronjobs {//is scoped
+        uint64_t id;
+        eosio::name owner;
+        eosio::name tag;
+        eosio::name auth_bouncer;
+        std::vector<eosio::action> actions;
+        eosio::time_point_sec submitted;
+        eosio::time_point_sec due_date;
+        eosio::time_point_sec expiration;
+        eosio::asset gas_fee;
+        std::string description;
+        uint8_t max_exec_count=1;
+        std::vector<croneos::oracle::source> oracle_srcs;
+
+        uint64_t primary_key() const { return id; }
+        uint64_t by_owner() const { return owner.value; }
+        uint64_t by_due_date() const { return due_date.sec_since_epoch(); }
+        uint128_t by_owner_tag() const { return (uint128_t{owner.value} << 64) | tag.value; }
+    };
+    typedef eosio::multi_index<"cronjobs"_n, cronjobs,
+        eosio::indexed_by<"byowner"_n, eosio::const_mem_fun<cronjobs, uint64_t, &cronjobs::by_owner>>,
+        eosio::indexed_by<"byduedate"_n, eosio::const_mem_fun<cronjobs, uint64_t, &cronjobs::by_due_date>>,
+        eosio::indexed_by<"byownertag"_n, eosio::const_mem_fun<cronjobs, uint128_t, &cronjobs::by_owner_tag>>
+    > cronjobs_table;
+    //************************
+
+
     eosio::permission_level const default_exec_permission_level = eosio::permission_level{eosio::name(_DEFAULT_EXEC_ACC_), "active"_n};
 
-    void deposit(eosio::name owner, eosio::asset gas, eosio::permission_level auth){
-        if(gas.amount > 0){
-            eosio::action(auth, "eosio.token"_n, "transfer"_n, make_tuple(owner, cron_contract_name, gas, std::string("deposit gas"))).send();
+    void deposit(eosio::name owner, eosio::extended_asset gas, eosio::permission_level auth){
+        if(gas.quantity.amount > 0){
+            eosio::action(
+                auth, 
+                gas.contract, 
+                "transfer"_n, 
+                make_tuple(owner, eosio::name(_CRONEOS_CONTRACT_), gas.quantity, std::string("deposit gas"))
+            ).send();
         }
     };
 
@@ -64,7 +97,7 @@ namespace croneos{
         uint32_t delay_sec = 0;
         eosio::time_point_sec expiration = eosio::time_point_sec(0);
         uint32_t expiration_sec = 0;
-        eosio::asset gas_fee = eosio::asset(0, eosio::symbol(eosio::symbol_code("EOS"), 4));//optional: the gas fee you are willing to pay
+        eosio::extended_asset gas_fee = eosio::extended_asset( eosio::asset(0, eosio::symbol(eosio::symbol_code("EOS"), 4) ), eosio::name("eosio.token") );
         std::string description ="No description";
         std::vector<eosio::permission_level> custom_exec_permissions;
         uint8_t max_exec_count = 1;
@@ -87,7 +120,7 @@ namespace croneos{
             //schedule
             eosio::action(
                 auth,
-                cron_contract_name, "schedule"_n,
+                eosio::name(_CRONEOS_CONTRACT_), "schedule"_n,
                 make_tuple(
                         owner,
                         scope,
@@ -98,14 +131,31 @@ namespace croneos{
                         delay_sec, 
                         expiration, 
                         expiration_sec, 
-                        gas_fee, 
+                        gas_fee.quantity, 
                         description, 
                         oracle_sources
                 )
             ).send();
             
         }
-
+        
+        
+        static void cancel_by_tag(eosio::name owner, eosio::name tag, eosio::name scope, eosio::permission_level auth){
+            scope = scope == eosio::name(0) ? eosio::name(_CRONEOS_CONTRACT_) : scope;
+            cronjobs_table _cronjobs(eosio::name(_CRONEOS_CONTRACT_), scope.value);
+            auto by_owner_tag = _cronjobs.get_index<"byownertag"_n>();
+            uint128_t composite_id = (uint128_t{owner.value} << 64) | tag.value;
+            auto tag_itr = by_owner_tag.find( composite_id);
+            if(tag_itr != by_owner_tag.end() ){
+                eosio::action(
+                    auth,
+                    eosio::name(_CRONEOS_CONTRACT_), "cancel"_n,
+                    std::make_tuple(owner, tag_itr->id, scope )
+                ).send();
+            }    
+        }
+        
+        
 
         private:
         std::vector<eosio::permission_level> construct_permission_levels(){
@@ -118,39 +168,8 @@ namespace croneos{
             }
         }
 
-    //************************
-        //struct [[eosio::table, eosio::contract(__MY__CONTRACT__)]] cronjobs{
-        struct cronjobs {//is scoped
-            uint64_t id;
-            eosio::name owner;
-            eosio::name tag;
-            eosio::name auth_bouncer;
-            std::vector<eosio::action> actions;
-            eosio::time_point_sec submitted;
-            eosio::time_point_sec due_date;
-            eosio::time_point_sec expiration;
-            eosio::asset gas_fee;
-            std::string description;
-            uint8_t max_exec_count=1;
-            std::vector<croneos::oracle::source> oracle_srcs;
-
-            uint64_t primary_key() const { return id; }
-            uint64_t by_owner() const { return owner.value; }
-            uint64_t by_due_date() const { return due_date.sec_since_epoch(); }
-            uint128_t by_owner_tag() const { return (uint128_t{owner.value} << 64) | tag.value; }
-        };
-        typedef eosio::multi_index<"cronjobs"_n, cronjobs,
-        eosio::indexed_by<"byowner"_n, eosio::const_mem_fun<cronjobs, uint64_t, &cronjobs::by_owner>>,
-        eosio::indexed_by<"byduedate"_n, eosio::const_mem_fun<cronjobs, uint64_t, &cronjobs::by_due_date>>,
-        eosio::indexed_by<"byownertag"_n, eosio::const_mem_fun<cronjobs, uint128_t, &cronjobs::by_owner_tag>>
-        > cronjobs_table;
-    //************************
-
 
     };
-
-
-
 
 
 }
